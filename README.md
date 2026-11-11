@@ -35,7 +35,7 @@ You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) insta
    cp .env.example .env
    ```
 
-2. Start PostgreSQL and pgAdmin:
+2. Start PostgreSQL, pgAdmin and Kestra:
 
    ```bash
    docker compose up -d
@@ -49,7 +49,17 @@ You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) insta
    - Username: `POSTGRES_USER` from `.env`
    - Password: `POSTGRES_PASSWORD` from `.env`
 
-5. Stop the containers (data is kept in the `postgres_data` volume):
+5. Load the pipeline into Kestra (run again whenever you edit a file in `flows/`). Use your `KESTRA_USER` / `KESTRA_PASSWORD` from `.env`:
+
+   ```bash
+   curl -u "admin@example.com:ChangeMe123" -X POST -F fileUpload=@flows/divvy_pipeline.yml http://localhost:8081/api/v1/main/flows/import
+   ```
+
+6. Open Kestra at <http://localhost:8081>, log in with the same user, open **Flows → divvy_pipeline → Execute**, and pick a year and month. The flow downloads that month of trips and loads it into the `raw.divvy_trips` table. Running a month twice does not create duplicates.
+
+   To download a month without Kestra instead: `python scripts/extract_divvy.py 2024 6` (saves to `data/raw/`, which git ignores).
+
+7. Stop the containers (data is kept in the Docker volumes):
 
    ```bash
    docker compose down

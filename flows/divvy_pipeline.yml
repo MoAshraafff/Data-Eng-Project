@@ -1,0 +1,61 @@
+# Kestra flow: download one month of Divvy trips and load it into Postgres.
+# Kestra loads this file at startup (see the kestra service in docker-compose.yml).
+# Safe to re-run: rows already in raw.divvy_trips are skipped.
+
+id: divvy_pipeline
+namespace: divvy
+
+inputs:
+  - id: year
+    type: INT
+    defaults: 2024
+  - id: month
+    type: INT
+    defaults: 6
+
+variables:
+  jdbc_url: jdbc:postgresql://postgres:5432/{{ envs.postgres_db }}
+
+tasks:
+  - id: extract
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - python3 /app/repo/scripts/extract_divvy.py {{ inputs.year }} {{ inputs.month }} --out-dir .
+      - mv *-divvy-tripdata.csv trips.csv
+      - cp /app/repo/sql/01_create_tables.sql create_tables.sql
+    outputFiles:
+      - trips.csv
+      - create_tables.sql
+
+  - id: prepare_tables
+    type: io.kestra.plugin.jdbc.postgresql.Queries
+    url: "{{ render(vars.jdbc_url) }}"
+    username: "{{ envs.postgres_user }}"
+    password: "{{ envs.postgres_password }}"
+    sql: |
+      {{ read(outputs.extract.outputFiles['create_tables.sql']) }}
+      CREATE TABLE IF NOT EXISTS raw.divvy_trips_stage (LIKE raw.divvy_trips);
+      TRUNCATE raw.divvy_trips_stage;
+
+  - id: load_stage
+    type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    url: "{{ render(vars.jdbc_url) }}"
+    username: "{{ envs.postgres_user }}"
+    password: "{{ envs.postgres_password }}"
+    table: raw.divvy_trips_stage
+    from: "{{ outputs.extract.outputFiles['trips.csv'] }}"
+    format: CSV
+    header: true
+
+  - id: insert_new_rows
+    type: io.kestra.plugin.jdbc.postgresql.Queries
+    url: "{{ render(vars.jdbc_url) }}"
+    username: "{{ envs.postgres_user }}"
+    password: "{{ envs.postgres_password }}"
+    sql: |
+      INSERT INTO raw.divvy_trips
+      SELECT * FROM raw.divvy_trips_stage
+      ON CONFLICT (ride_id) DO NOTHING;
+      DROP TABLE raw.divvy_trips_stage;

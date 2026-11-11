@@ -33,6 +33,39 @@ services:
       postgres:
         condition: service_healthy
 
+  kestra:
+    image: kestra/kestra:v1.3.47
+    container_name: divvy_kestra
+    restart: unless-stopped
+    user: root
+    command: server local
+    environment:
+      KESTRA_CONFIGURATION: |
+        kestra:
+          tutorial-flows:
+            enabled: false
+          server:
+            basic-auth:
+              username: ${KESTRA_USER}
+              password: ${KESTRA_PASSWORD}
+      # Exposed to flows as {{ envs.postgres_user }} etc.
+      ENV_POSTGRES_USER: ${POSTGRES_USER}
+      ENV_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ENV_POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${KESTRA_PORT:-8081}:8080"
+    volumes:
+      - kestra_data:/app/data        # Kestra's own database
+      - kestra_storage:/app/storage  # task outputs
+      # Repo folders the flows use (read-only)
+      - ./scripts:/app/repo/scripts:ro
+      - ./sql:/app/repo/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   pgadmin_data:
+  kestra_data:
+  kestra_storage:
