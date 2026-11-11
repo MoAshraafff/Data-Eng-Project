@@ -6,12 +6,12 @@ Dataset: [Divvy Trip Data](https://divvy-tripdata.s3.amazonaws.com/index.html) (
 
 ## Team
 
-| Name | ID | Role |
-|------|----|------|
-| Mohamed Ashraf Gamal | 692300392 | Team lead & infrastructure |
-| Ahmed Walid | 692300197 | Ingestion engineer |
-| Khaled Hossam | 692400463 | Database & data quality |
-| Mazen Walid | 692300202 | Orchestration & dashboard |
+| Name | ID |
+|------|----|
+| Mohamed Ashraf Gamal | 692300392 |
+| Ahmed Walid | 692300197 |
+| Khaled Hossam | 692400463 |
+| Mazen Walid | 692300202 |
 
 ## Structure
 
